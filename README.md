@@ -1,4 +1,4 @@
-# CMPE-272_HW1_Ansible
+# CMPE-272_HW1_Ansible - Team AlphaGo
 
 Steps:-
 
