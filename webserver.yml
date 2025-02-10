@@ -1,0 +1,101 @@
+---
+- name: Deploy or remove webserver on webservers group
+  hosts: webservers
+  become: true
+  vars:
+    http_port: 8080
+    message_prefix: "Hello World from SJSU-"
+
+  tasks:
+    - name: Install Apache web server
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes
+      tags:
+        - deploy
+
+    - name: Configure Apache to listen on port 8080
+      lineinfile:
+        path: /etc/apache2/ports.conf
+        regexp: "^Listen 80"
+        line: "Listen {{ http_port }}"
+      notify: Restart Apache
+      tags:
+        - deploy
+
+    - name: Create custom index.html page with centered content
+      copy:
+        dest: /var/www/html/index.html
+        content: |
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>SJSU Webserver</title>
+              <style>
+                  body {
+                      display: flex;
+                      justify-content: center;
+                      align-items: center;
+                      height: 100vh;
+                      margin: 0;
+                      font-family: Arial, sans-serif;
+                      background-color: #f4f4f4;
+                  }
+                  h1 {
+                      text-align: center;
+                      color: #333;
+                  }
+              </style>
+          </head>
+          <body>
+              <h1>{{ message_prefix }}{{ hostname }}</h1>
+          </body>
+          </html>
+      tags:
+        - deploy
+
+    - name: Enable mod_rewrite for Apache (if needed)
+      command: a2enmod rewrite
+      notify: Restart Apache
+      tags:
+        - deploy
+
+    - name: Start and enable Apache service
+      service:
+        name: apache2
+        state: started
+        enabled: true
+      tags:
+        - deploy
+
+    - name: Remove custom index.html page (cleanup)
+      file:
+        path: /var/www/html/index.html
+        state: absent
+      tags:
+        - undeploy
+
+    - name: Stop and disable Apache service (cleanup)
+      service:
+        name: apache2
+        state: stopped
+        enabled: false
+      tags:
+        - undeploy
+
+    - name: Uninstall Apache web server (cleanup)
+      apt:
+        name: apache2
+        state: absent
+      tags:
+        - undeploy
+
+  handlers:
+    - name: Restart Apache
+      service:
+        name: apache2
+        state: restarted
+
